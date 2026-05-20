@@ -622,20 +622,27 @@ def main():
             ext = ".pdf"
             document_format = "pdf"
         elif header[:2] == b"PK":
-            with zipfile.ZipFile(input_path) as zf:
-                names = set(zf.namelist())
-                if "mimetype" in names and zf.read("mimetype").startswith(b"application/epub"):
-                    ext = ".epub"
-                    document_format = "epub"
-                elif "word/document.xml" in names:
-                    ext = ".docx"
-                    document_format = "docx"
-                else:
-                    print(
-                        f"ERROR: Unsupported ZIP-based format '{input_file.name}'. Supported: {supported_formats_message()}",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
+            try:
+                with zipfile.ZipFile(input_path) as zf:
+                    names = set(zf.namelist())
+                    if "mimetype" in names and zf.read("mimetype").startswith(b"application/epub"):
+                        ext = ".epub"
+                        document_format = "epub"
+                    elif "word/document.xml" in names:
+                        ext = ".docx"
+                        document_format = "docx"
+                    else:
+                        print(
+                            f"ERROR: Unsupported ZIP-based format '{input_file.name}'. Supported: {supported_formats_message()}",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+            except (zipfile.BadZipFile, KeyError, OSError):
+                print(
+                    f"ERROR: Unsupported ZIP-based format '{input_file.name}'. Supported: {supported_formats_message()}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
         else:
             print(
                 f"ERROR: Unsupported format '{ext or '<none>'}'. Supported: {supported_formats_message()}",
