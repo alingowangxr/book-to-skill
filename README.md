@@ -7,11 +7,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Skill-blueviolet?style=for-the-badge" alt="Claude Code Skill">
   <img src="https://img.shields.io/badge/PDF%20%E2%80%A2%20EPUB%20%E2%80%A2%20DOCX%20%E2%80%A2%20MD%20%E2%80%A2%20HTML%20%E2%80%A2%20RTF%20%E2%80%A2%20MOBI-supported-green?style=for-the-badge" alt="Formats supported">
+  <img src="https://img.shields.io/badge/中文-CJK%20ready-blue?style=for-the-badge" alt="Chinese/CJK Support">
   <img src="https://img.shields.io/badge/effort-high-orange?style=for-the-badge" alt="Effort: high">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License">
 </p>
 
 <p align="center">
+  <a href="#-chinese--cjk-support">中文</a> ·
   <a href="#-why">Why</a> ·
   <a href="#-what-it-generates">What it generates</a> ·
   <a href="#-usage">Usage</a> ·
@@ -73,6 +75,12 @@ Supported document formats: PDF, EPUB, DOCX, TXT, Markdown, reStructuredText, As
 
 # Full path with explicit name
 /book-to-skill /tmp/ddd-evans.pdf domain-driven-design
+
+# Chinese PDF book — uses Chinese-optimized extraction
+/book-to-skill ~/books/深入理解計算機系統.pdf systems-cn
+
+# Chinese EPUB book
+/book-to-skill ~/books/領域驅動設計-中文版.epub ddd-cn
 ```
 
 After the skill is created, use it like any other Claude Code skill:
@@ -82,6 +90,15 @@ After the skill is created, use it like any other Claude Code skill:
 /designing-data-intensive-apps replication      # find and explain a topic
 /designing-data-intensive-apps ch05             # dive into chapter 5
 /designing-data-intensive-apps "what chapters do you have?"
+```
+
+**Chinese skill usage:**
+
+```bash
+/systems-cn                                     # load core mental models
+/systems-cn 記憶體管理                           # find and explain a topic (Chinese query)
+/systems-cn ch03                                # dive into chapter 3
+/systems-cn "你有什麼章節？"                     # browse chapters (Chinese query)
 ```
 
 ---
@@ -99,7 +116,7 @@ The extractor tries tools in order per format and uses the first available. If n
 | Text-heavy fallback | `pdfminer.six` | `pip3 install pdfminer.six` | ⚡ instant |
 | **Technical (code, tables, formulas)** | **`docling`** | `pip3 install docling` | ~1.5s/page |
 
-> Before extraction begins, the skill asks you whether the book is **technical** or **text-heavy** and picks the right tool automatically. Docling preserves markdown tables and code blocks; pdftotext is faster for prose-only books.
+> Before extraction begins, the skill asks you whether the book is **technical**, **text-heavy**, or **Chinese/CJK** and picks the right tool automatically. Docling preserves markdown tables and code blocks; pdftotext is faster for prose-only books. Chinese mode adds GB18030/BIG5 encoding detection and Chinese chapter pattern recognition.
 
 **EPUB:**
 
@@ -117,40 +134,45 @@ The extractor tries tools in order per format and uses the first available. If n
 | RTF | `striprtf` (fallback: regex) | `pip3 install striprtf` |
 | MOBI / AZW / AZW3 | Calibre `ebook-convert` (external app, not pip) | https://calibre-ebook.com/download |
 | TXT / Markdown / reStructuredText / AsciiDoc | built-in | — |
+| Chinese/CJK (PDF) | pdftotext with layout optimization + GB18030/BIG5 encoding | built-in with poppler-utils |
 
 ---
 
 ## ⚙️ How it works
 
 ```
-PDF or EPUB
+PDF, EPUB, or Chinese/CJK book
      │
      ▼
-Step 1.5 — "Technical or text-heavy book?"
+Step 1.5 — "Technical, text-heavy, or Chinese/CJK book?"
      │
      ├── technical → Docling  (tables + code blocks as markdown, ~1.5s/page)
+     ├── chinese   → pdftotext with Chinese layout + GB18030/BIG5 encoding
      └── text      → pdftotext → PyPDF2 → pdfminer  (instant)
      │
      ▼
-scripts/extract.py --mode <technical|text>
+scripts/extract.py --mode <technical|text|chinese>
   EPUB → ebooklib → stdlib zipfile
+  DOCX → python-docx → stdlib ZIP/XML
+  HTML → BeautifulSoup4 → stdlib html.parser
      │
      ├── /tmp/book_skill_work/full_text.txt
      └── /tmp/book_skill_work/metadata.json
-               │
-               ▼
-          Claude analyzes structure
-          (title, author, chapters, ToC)
-               │
-               ▼
-          Generates per-chapter summaries  (800–1,200 tokens each)
-          technical → includes Code Examples + Reference Tables sections
-          Generates glossary, patterns, cheatsheet
-          Generates master SKILL.md with core mental models
-               │
-               ▼
-          ~/.claude/skills/<slug>/  ✅ written
-          /tmp/book_skill_work/     🗑️  cleaned up
+                │
+                ▼
+           Claude analyzes structure
+           (title, author, chapters, ToC — supports Chinese chapter patterns)
+                │
+                ▼
+           Generates per-chapter summaries  (800–1,200 tokens each)
+           technical → includes Code Examples + Reference Tables sections
+           chinese   → preserves Chinese framework names + English translations
+           Generates glossary, patterns, cheatsheet
+           Generates master SKILL.md with core mental models
+                │
+                ▼
+           ~/.claude/skills/<slug>/  ✅ written
+           /tmp/book_skill_work/     🗑️  cleaned up
 ```
 
 **Extraction benchmark** (103-page technical book, CPU only):
@@ -214,6 +236,55 @@ book-to-skill is built for a different job: you want to go deep on one book and 
 
 ---
 
+## 🀄 Chinese / CJK Support
+
+book-to-skill has built-in support for Chinese, Japanese, and Korean (CJK) books across all formats.
+
+### Features
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| **Encoding detection** | ✅ | Auto-detects UTF-8, GB18030, GBK, BIG5 for Chinese text |
+| **Chapter detection** | ✅ | Recognizes `第N章`, `第N節/节`, `Chapter N`, numeric (`01`, `02`) patterns |
+| **Table of Contents** | ✅ | Detects `目錄`, `目录`, `章節目錄`, `Contents` |
+| **Token estimation** | ✅ | Character-based estimation for CJK text |
+| **Chinese/CJK mode** | ✅ | `--mode chinese` optimizes PDF extraction with layout enhancement |
+| **Mixed content** | ✅ | Handles Chinese + English code examples and tables |
+| **Traditional Chinese** | ✅ | BIG5 encoding + Traditional Chinese content support |
+
+### Usage
+
+```bash
+# Via interactive prompt — select "Chinese / CJK" when asked
+/book-to-skill ~/books/你的書.pdf
+
+# Or specify mode directly
+/book-to-skill ~/books/你的書.pdf --mode chinese
+
+# EPUB (auto-detects Chinese content)
+/book-to-skill ~/books/你的書.epub
+```
+
+### Chapter patterns detected
+
+- `第一章`, `第1章`, `第百章` — Chinese chapter markers
+- `第1節`, `第2节` — Chinese section markers
+- `一、`, `二、` — Chinese numbered lists
+- `01`, `02`, `03` — Numeric chapter markers (common in Chinese books)
+- `1. 标题` — Numbered titles
+- `Chapter 5`, `Section 3` — English patterns
+
+### Test with a real Chinese book
+
+```bash
+# Clone and run tests
+python tests/test_chinese_support.py
+
+# Expected: 36/36 passed
+```
+
+---
+
 ## 📥 Install
 
 Copy this into your Claude Code session:
@@ -248,10 +319,18 @@ Then in any Claude Code session:
 
 ```
 book-to-skill/
-├── SKILL.md              # Skill definition + step-by-step instructions
+├── SKILL.md                  # Skill definition + step-by-step instructions
 ├── scripts/
-│   └── extract.py        # PDF + EPUB extraction (pdftotext / PyPDF2 / pdfminer / ebooklib / zipfile)
-└── README.md             # This file
+│   └── extract.py            # Multi-format text extractor with CJK support
+├── tests/
+│   ├── chinese-book-simple.txt       # Chinese text book test fixture (10 chapters)
+│   ├── chinese-book-technical.md     # Chinese technical book test fixture (5 chapters)
+│   ├── chinese-book-traditional.html # Traditional Chinese book test fixture (4 chapters)
+│   └── test_chinese_support.py       # 36-test Chinese support test suite
+├── chinese-support-design.md  # Chinese support design & implementation plan
+├── Chinese-Usage-Guide.md     # Chinese usage guide and examples
+├── README.md                  # This file
+└── LICENSE.md                 # MIT License
 ```
 
 ---
@@ -259,6 +338,11 @@ book-to-skill/
 ## License
 
 MIT
+
+## 📖 Related docs
+
+- [Chinese Usage Guide](Chinese-Usage-Guide.md) — Full guide for Chinese/CJK books
+- [Chinese Support Design](chinese-support-design.md) — Design decisions and architecture
 
 ## Star History
 

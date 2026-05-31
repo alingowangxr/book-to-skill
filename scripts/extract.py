@@ -53,7 +53,10 @@ TEXT_EXTENSIONS = {".txt", ".text", ".md", ".markdown", ".rst", ".adoc", ".ascii
 HTML_EXTENSIONS = {".html", ".htm", ".xhtml"}
 CALIBRE_EBOOK_EXTENSIONS = {".mobi", ".azw", ".azw3"}
 SUPPORTED_EXTENSIONS = {
-    ".pdf", ".epub", ".docx", ".rtf",
+    ".pdf",
+    ".epub",
+    ".docx",
+    ".rtf",
     *TEXT_EXTENSIONS,
     *HTML_EXTENSIONS,
     *CALIBRE_EBOOK_EXTENSIONS,
@@ -71,7 +74,14 @@ PYTHON_DEPENDENCIES = {
 
 
 def estimate_tokens(text: str) -> int:
-    return int(len(text.split()) / WORDS_PER_TOKEN)
+    # 檢測中文字符
+    chinese_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
+    if chinese_chars > 0:
+        # 中文：使用字符數估算（1 token ≈ 1.5 個中文字符）
+        return int(len(text) / 1.5)
+    else:
+        # 英文：使用單詞數估算
+        return int(len(text.split()) / WORDS_PER_TOKEN)
 
 
 def supported_formats_message() -> str:
@@ -147,7 +157,13 @@ def offer_dependency_install(
     if install_mode == "yes":
         should_install = True
     elif install_mode == "ask" and sys.stdin.isatty():
-        answer = input("Missing package(s) detected. Do you want to install? y=install, n=fallback: ").strip().lower()
+        answer = (
+            input(
+                "Missing package(s) detected. Do you want to install? y=install, n=fallback: "
+            )
+            .strip()
+            .lower()
+        )
         should_install = answer in {"y", "yes", "install"}
     else:
         if fallback:
@@ -165,7 +181,10 @@ def offer_dependency_install(
         if not still_missing:
             print("Package installation complete.")
             return
-        print(f"Package installation incomplete; still missing: {', '.join(still_missing)}", file=sys.stderr)
+        print(
+            f"Package installation incomplete; still missing: {', '.join(still_missing)}",
+            file=sys.stderr,
+        )
     else:
         print("Package installation failed.", file=sys.stderr)
 
@@ -224,7 +243,7 @@ def prepare_dependencies(ext: str, extraction_mode: str, install_mode: str) -> N
 
 
 def read_text_file(path: str) -> str | None:
-    for encoding in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+    for encoding in ("utf-8-sig", "utf-8", "gb18030", "big5", "cp1252", "latin-1"):
         try:
             return Path(path).read_text(encoding=encoding)
         except UnicodeDecodeError:
@@ -237,6 +256,7 @@ def read_text_file(path: str) -> str | None:
 def extract_html_content(raw_html: str) -> str:
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(raw_html, "html.parser")
         for element in soup(["script", "style", "head"]):
             element.decompose()
@@ -257,6 +277,7 @@ def extract_html_file(path: str) -> str | None:
 def extract_docx_with_python_docx(docx_path: str) -> str | None:
     try:
         import docx
+
         document = docx.Document(docx_path)
         parts = [paragraph.text for paragraph in document.paragraphs if paragraph.text]
         for table in document.tables:
@@ -330,6 +351,7 @@ def extract_rtf(rtf_path: str) -> tuple[str, str]:
 
     try:
         from striprtf.striprtf import rtf_to_text
+
         text = rtf_to_text(raw)
         if text.strip():
             return text, "striprtf"
@@ -348,7 +370,9 @@ def extract_with_ebook_convert(input_path: str) -> str | None:
     try:
         result = subprocess.run(
             ["ebook-convert", input_path, str(output_path)],
-            capture_output=True, text=True, timeout=300
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         if result.returncode == 0 and output_path.exists():
             text = output_path.read_text(encoding="utf-8", errors="replace")
@@ -365,7 +389,9 @@ def extract_with_pdftotext(pdf_path: str) -> str | None:
     try:
         result = subprocess.run(
             ["pdftotext", "-layout", pdf_path, "-"],
-            capture_output=True, text=True, timeout=120
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout
@@ -377,6 +403,7 @@ def extract_with_pdftotext(pdf_path: str) -> str | None:
 def extract_with_pypdf2(pdf_path: str) -> str | None:
     try:
         import PyPDF2
+
         text_parts = []
         with open(pdf_path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
@@ -395,6 +422,7 @@ def extract_with_pypdf2(pdf_path: str) -> str | None:
 def extract_with_pdfminer(pdf_path: str) -> str | None:
     try:
         from pdfminer.high_level import extract_text
+
         return extract_text(pdf_path)
     except ImportError:
         return None
@@ -459,7 +487,9 @@ def extract_with_zipfile(epub_path: str) -> str | None:
             opf_files = [n for n in names if n.endswith(".opf")]
             if opf_files:
                 opf_text = zf.read(opf_files[0]).decode("utf-8", errors="replace")
-                spine_order = re.findall(r'href=["\']([^"\']+\.(?:xhtml|html))["\']', opf_text)
+                spine_order = re.findall(
+                    r'href=["\']([^"\']+\.(?:xhtml|html))["\']', opf_text
+                )
 
             html_files = spine_order or sorted(
                 n for n in names if n.endswith((".html", ".xhtml"))
@@ -514,7 +544,7 @@ def count_epub_chapters(epub_path: str) -> int:
             if not opf_files:
                 return 0
             opf_text = zf.read(opf_files[0]).decode("utf-8", errors="replace")
-            return len(re.findall(r'<itemref\b', opf_text))
+            return len(re.findall(r"<itemref\b", opf_text))
     except Exception:
         return 0
 
@@ -534,6 +564,7 @@ def count_pages(pdf_path: str) -> int:
     # Fallback: count form-feed chars (pdftotext -layout uses \f between pages)
     try:
         import PyPDF2
+
         with open(pdf_path, "rb") as f:
             return len(PyPDF2.PdfReader(f).pages)
     except Exception:
@@ -543,12 +574,13 @@ def count_pages(pdf_path: str) -> int:
 def detect_structure(text: str) -> dict:
     """Detect chapter count and table of contents presence."""
     import re
+
     lines = text[:50000].splitlines()
 
     # Look for chapter headings
     chapter_pattern = re.compile(
-        r"^\s*(chapter\s+\d+|CHAPTER\s+\d+|ch\.\s*\d+|\d+\.\s+[A-Z])",
-        re.IGNORECASE
+        r"^\s*(?:#+\s*)?(?:\d{1,2}\.?\s*$|chapter\s+\d+|CHAPTER\s+\d+|ch\.\s*\d+|\d+\.\s+[A-Z]|第[一二三四五六七八九十百千零\d]+章|第\d+章|第[一二三四五六七八九十百千零\d]+節|第\d+節|第[一二三四五六七八九十百千零\d]+节|第\d+节|第[一二三四五六七八九十百千零\d]+部分|第\d+部分)",
+        re.IGNORECASE,
     )
     chapters_found = [l.strip() for l in lines if chapter_pattern.match(l)]
 
@@ -556,10 +588,10 @@ def detect_structure(text: str) -> dict:
     # copyright pages, praise, dedications, forewords). Require the keyword to appear on
     # its own line to avoid false positives like "the contents of this book are...".
     toc_pattern = re.compile(
-        r"^\s*(?:table of contents|contents|índice|sumário)\s*$",
+        r"^\s*(?:table of contents|contents|índice|sumário|目錄|目录|章節目錄|章节目录)\s*$",
         re.IGNORECASE | re.MULTILINE,
     )
-    has_toc = bool(toc_pattern.search(text[:30000]))
+    has_toc = bool(toc_pattern.search(text[:30000])) or detect_chinese_toc(text)
 
     return {
         "chapters_detected": len(chapters_found),
@@ -595,7 +627,10 @@ def extract_with_docling(pdf_path: str) -> str | None:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: extract.py <path-to-document> [--mode technical|text] [--install-missing ask|yes|no]", file=sys.stderr)
+        print(
+            "Usage: extract.py <path-to-document> [--mode technical|text] [--install-missing ask|yes|no]",
+            file=sys.stderr,
+        )
         print(f"Supported formats: {supported_formats_message()}", file=sys.stderr)
         sys.exit(1)
 
@@ -608,7 +643,7 @@ def main():
         idx = sys.argv.index("--mode")
         if idx + 1 < len(sys.argv):
             extraction_mode = sys.argv[idx + 1].lower()
-    if extraction_mode not in ("technical", "text"):
+    if extraction_mode not in ("technical", "text", "chinese"):
         extraction_mode = "text"
 
     if not os.path.exists(input_path):
@@ -630,7 +665,9 @@ def main():
             try:
                 with zipfile.ZipFile(input_path) as zf:
                     names = set(zf.namelist())
-                    if "mimetype" in names and zf.read("mimetype").startswith(b"application/epub"):
+                    if "mimetype" in names and zf.read("mimetype").startswith(
+                        b"application/epub"
+                    ):
                         ext = ".epub"
                         document_format = "epub"
                     elif "word/document.xml" in names:
@@ -674,13 +711,26 @@ def main():
     elif ext == ".pdf":
         print(f"Extracting PDF: {input_path}")
         if extraction_mode == "technical":
-            print("Mode: technical — using Docling (layout-aware)...", end=" ", flush=True)
+            print(
+                "Mode: technical — using Docling (layout-aware)...", end=" ", flush=True
+            )
             text = extract_with_docling(input_path)
             if text:
                 method = "docling"
                 print("OK")
             else:
                 print("not available, falling back to pdftotext")
+                extraction_mode = "text"
+
+        if extraction_mode == "chinese":
+            print("Mode: chinese — using Chinese-optimized extraction...")
+            print("Trying pdftotext with Chinese layout...", end=" ", flush=True)
+            text = extract_pdf_with_chinese_layout(input_path)
+            if text:
+                method = "pdftotext-chinese"
+                print("OK")
+            else:
+                print("not available, falling back to standard extraction")
                 extraction_mode = "text"
 
         if extraction_mode == "text":
@@ -773,6 +823,7 @@ def main():
     structure = detect_structure(text)
     file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
 
+    has_chinese = bool(re.findall(r"[\u4e00-\u9fff]", text))
     metadata = {
         "source_file": str(Path(input_path).resolve()),
         "filename": Path(input_path).name,
@@ -785,11 +836,14 @@ def main():
         "words": len(text.split()),
         "estimated_tokens": tokens,
         "estimated_tokens_human": f"~{tokens // 1000}K",
+        "has_chinese_content": has_chinese,
         "output_text": str(OUTPUT_TEXT),
         **structure,
     }
 
-    OUTPUT_META.write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
+    OUTPUT_META.write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     page_label = {
         "spine_items": "Spine items",
@@ -801,7 +855,11 @@ def main():
     print(f"   Format  : {document_format.upper()}")
     print(f"   Method  : {method}")
     print(page_line)
+    has_chinese = bool(re.findall(r"[\u4e00-\u9fff]", text))
     print(f"   Words   : {len(text.split()):,}")
+    if has_chinese:
+        chinese_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
+        print(f"   Chinese : {chinese_chars:,} chars detected")
     print(f"   Tokens  : ~{tokens // 1000}K")
     print(f"   Chapters: {structure['chapters_detected']} detected")
     print(f"   ToC     : {'yes' if structure['has_toc'] else 'not detected'}")
@@ -812,6 +870,101 @@ def main():
         )
     print(f"\n   Text -> {OUTPUT_TEXT}")
     print(f"   Meta -> {OUTPUT_META}")
+
+
+def detect_chinese_encoding(text: bytes) -> str:
+    try:
+        import chardet
+    except ImportError:
+        return "utf-8"
+    detection = chardet.detect(text)
+    encoding = detection["encoding"]
+    chinese_encodings = {
+        "gb2312": "gb18030",
+        "gbk": "gb18030",
+        "big5": "big5",
+    }
+    if encoding in chinese_encodings:
+        encoding = chinese_encodings[encoding]
+    return encoding
+
+
+def extract_pdf_with_chinese_layout(pdf_path: str) -> str | None:
+    if shutil.which("pdftotext"):
+        try:
+            result = subprocess.run(
+                ["pdftotext", "-layout", pdf_path, "-"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout
+        except Exception:
+            pass
+    return extract_with_pdftotext(pdf_path)
+
+
+def detect_chinese_toc(text: str) -> bool:
+    toc_keywords = [
+        "目錄",
+        "章節目錄",
+        "本書目錄",
+        "內容目錄",
+        "目录",
+        "章节目录",
+        "本书目录",
+        "内容目录",
+        "目 录",
+        "目　录",
+    ]
+    lines = text[:50000].splitlines()
+    for line in lines[:100]:
+        line_stripped = line.strip().lstrip("#").strip()
+        if line_stripped in toc_keywords:
+            return True
+    return False
+
+
+def create_chinese_chapter_patterns():
+    patterns = {
+        "chapter": [
+            r"第[一二三四五六七八九十百千零\d]+章",
+            r"第\d+章",
+            r"Chapter\s+\d+",
+            r"CHAPTER\s+\d+",
+        ],
+        "section": [
+            r"第[一二三四五六七八九十百千零\d]+節",
+            r"第\d+節",
+            r"第[一二三四五六七八九十百千零\d]+节",
+            r"第\d+节",
+            r"Section\s+\d+",
+        ],
+        "part": [
+            r"第[一二三四五六七八九十百千零\d]+部分",
+            r"第\d+部分",
+            r"Part\s+[IVX]+",
+            r"PART\s+[IVX]+",
+        ],
+        "numbered": [r"^\d+\.\s+[^\d]", r"^\d+\.\d+\s+"],
+        "chinese_numbered": [
+            r"^[一二三四五六七八九十]+、",
+            r"^[一二三四五六七八九十]+[．.]",
+        ],
+    }
+    return patterns
+
+
+def estimate_tokens_chinese(text: str) -> int:
+    chinese_chars = len(re.findall(r"[\u4e00-\u9fff\u3400-\u4dbf]", text))
+    english_words = len(re.findall(r"[a-zA-Z]+", text))
+    numbers = len(re.findall(r"\d+", text))
+    chinese_tokens = chinese_chars / 1.5
+    english_tokens = english_words / 0.75
+    number_tokens = numbers / 2
+    total_tokens = chinese_tokens + english_tokens + number_tokens
+    return max(int(total_tokens), 1)
 
 
 if __name__ == "__main__":

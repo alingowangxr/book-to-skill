@@ -1,0 +1,131 @@
+# Python 從入門到實踐（測試版）
+
+作者：測試作者
+
+## 目錄
+
+第一章　Python 基礎入門
+第二章　變數與資料類型
+第三章　列表操作
+第四章　條件判斷
+第五章　迴圈
+第六章　函數
+第七章　類別與物件
+第八章　檔案處理
+第九章　異常處理
+第十章　模組與套件
+
+## 第一章 Python 基礎入門
+
+歡迎來到 Python 的世界。Python 是一種簡單易學的程式語言。
+
+### 1.1 為什麼選擇 Python
+
+Python 的語法簡潔，非常適合初學者。
+
+### 1.2 安裝 Python
+
+前往 python.org 下載最新版本。
+
+### 1.3 第一個程式
+
+print("Hello, World!")
+
+## 第二章 變數與資料類型
+
+變數是用來儲存資料的容器。
+
+### 2.1 數字類型
+
+整數：1, 2, 100
+浮點數：3.14, 0.5
+
+### 2.2 字串
+
+name = "Python"
+print(name)
+
+## 第三章 列表操作
+
+列表是 Python 中最常用的資料結構。
+
+### 3.1 建立列表
+
+fruits = ["蘋果", "香蕉", "橘子"]
+
+### 3.2 列表推導式
+
+numbers = [x**2 for x in range(10)]
+
+## 第四章 條件判斷
+
+使用 if 語句進行條件判斷。
+
+### 4.1 if 語句
+
+if score >= 60:
+    print("及格")
+else:
+    print("不及格")
+
+## 第五章 迴圈
+
+迴圈用於重複執行程式碼。
+
+### 5.1 for 迴圈
+
+for i in range(5):
+    print(i)
+
+### 5.2 while 迴圈
+
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+## 第六章 函數
+
+函數是組織好的可重複使用的程式碼塊。
+
+def greet(name):
+    return f"你好，{name}！"
+
+print(greet("世界"))
+
+## 第七章 類別與物件
+
+物件導向程式設計的核心概念。
+
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} 在叫")
+
+my_dog = Dog("小白")
+my_dog.bark()
+
+## 第八章 檔案處理
+
+Python 可以輕鬆讀寫檔案。
+
+with open("test.txt", "w", encoding="utf-8") as f:
+    f.write("Hello, 世界！")
+
+## 第九章 異常處理
+
+使用 try-except 處理錯誤。
+
+try:
+    result = 10 / 0
+except ZeroDivisionError:
+    print("不能除以零")
+
+## 第十章 模組與套件
+
+模組是包含 Python 定義和語句的文件。
+
+import math
+print(math.pi)

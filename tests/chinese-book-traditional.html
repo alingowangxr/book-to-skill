@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>機器學習實戰（繁體中文測試版）</title>
+</head>
+<body>
+
+<h1>機器學習實戰</h1>
+<p><strong>作者</strong>：測試作者</p>
+
+<h2>目錄</h2>
+<ul>
+  <li><a href="#ch1">第一章 機器學習基礎</a></li>
+  <li><a href="#ch2">第二章 線性回歸</a></li>
+  <li><a href="#ch3">第三章 決策樹</a></li>
+  <li><a href="#ch4">第四章 神經網路</a></li>
+</ul>
+
+<h2 id="ch1">第一章 機器學習基礎</h2>
+<p>機器學習是人工智慧的一個分支。它讓電腦能夠從數據中學習。</p>
+
+<h3>1.1 監督式學習</h3>
+<p>監督式學習使用標記數據進行訓練。</p>
+<ul>
+  <li>分類：預測類別標籤</li>
+  <li>回歸：預測連續數值</li>
+</ul>
+
+<h3>1.2 非監督式學習</h3>
+<p>非監督式學習使用未標記數據。</p>
+<ul>
+  <li>聚類：將相似數據分組</li>
+  <li>降維：減少特徵數量</li>
+</ul>
+
+<h2 id="ch2">第二章 線性回歸</h2>
+<p>線性回歸是最基礎的回歸演算法。</p>
+
+<h3>2.1 模型定義</h3>
+<pre><code>y = wx + b</code></pre>
+
+<h3>2.2 損失函數</h3>
+<pre><code>MSE = (1/n) * Σ(y_i - ŷ_i)²</code></pre>
+
+<h3>2.3 梯度下降</h3>
+<pre><code>w = w - α * ∂MSE/∂w
+b = b - α * ∂MSE/∂b</code></pre>
+
+<h2 id="ch3">第三章 決策樹</h2>
+<p>決策樹是一種直觀的分類演算法。</p>
+
+<table border="1">
+  <tr>
+    <th>演算法</th>
+    <th>分割標準</th>
+    <th>優點</th>
+  </tr>
+  <tr>
+    <td>ID3</td>
+    <td>資訊增益</td>
+    <td>簡單易懂</td>
+  </tr>
+  <tr>
+    <td>C4.5</td>
+    <td>增益率</td>
+    <td>處理連續值</td>
+  </tr>
+  <tr>
+    <td>CART</td>
+    <td>基尼係數</td>
+    <td>支援回歸</td>
+  </tr>
+</table>
+
+<h2 id="ch4">第四章 神經網路</h2>
+<p>神經網路由多層神經元組成。</p>
+
+<h3>4.1 感知機</h3>
+<pre><code>def perceptron(x, w, b):
+    z = sum(x_i * w_i for x_i, w_i in zip(x, w)) + b
+    return 1 if z > 0 else 0</code></pre>
+
+<h3>4.2 激活函數</h3>
+<ul>
+  <li>Sigmoid：1 / (1 + e⁻ˣ)</li>
+  <li>ReLU：max(0, x)</li>
+  <li>Tanh：(eˣ - e⁻ˣ) / (eˣ + e⁻ˣ)</li>
+</ul>
+
+</body>
+</html>

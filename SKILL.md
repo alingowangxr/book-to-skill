@@ -99,18 +99,23 @@ Before extracting, ask the user:
 >
 > 1. **Technical** — has code blocks, tables, formulas, diagrams (e.g. programming books, academic papers, architecture guides)
 > 2. **Text-heavy** — mostly prose, few or no tables/code (e.g. management, productivity, narrative non-fiction)
-> 3. **Not sure** — I'll use the fast method and warn you if quality seems limited"
+> 3. **Chinese / CJK** — contains Chinese, Japanese, or Korean text (e.g. Chinese technical books, Japanese literature)
+> 4. **Not sure** — I'll use the fast method and warn you if quality seems limited"
 
 Store the answer as `BOOK_TYPE`:
 - Option 1 → `BOOK_TYPE=technical`
 - Option 2 → `BOOK_TYPE=text`
-- Option 3 → `BOOK_TYPE=text`
+- Option 3 → `BOOK_TYPE=chinese`
+- Option 4 → `BOOK_TYPE=text`
 
-**If `BOOK_TYPE=technical`**, inform the user before proceeding:
+**If `BOOK_TYPE=technical`**, inform:
 > "📐 Technical mode selected — using Docling for structure-aware extraction (tables, code blocks, formulas preserved as markdown). This takes ~1.5s per page, so expect a few minutes for longer books. Starting now…"
 
 **If `BOOK_TYPE=text`**, inform:
 > "📄 Text mode selected — using the fastest suitable extractor for this file type. Plain text/Markdown/HTML are usually ready in seconds; PDFs use pdftotext when available."
+
+**If `BOOK_TYPE=chinese`**, inform:
+> "🀄 Chinese/CJK mode selected — using Chinese-optimized extraction with enhanced encoding detection (GB18030, BIG5, UTF-8), Chinese chapter pattern recognition, and localized structure analysis. PDFs use pdftotext with layout optimization."
 
 ---
 
@@ -153,6 +158,7 @@ Use `--install-missing yes` to install missing Python packages without prompting
 
 - PDF `--mode technical` → uses Docling (layout-aware, preserves tables and code blocks as markdown)
 - PDF `--mode text` → uses pdftotext → PyPDF2 → pdfminer fallback chain (fast, plain text)
+- PDF `--mode chinese` → uses pdftotext with Chinese layout optimization, enhanced encoding detection (GB18030, BIG5), and Chinese chapter pattern recognition
 - EPUB → uses ebooklib + BeautifulSoup4, then stdlib ZIP/HTML fallback
 - DOCX → uses python-docx, then stdlib ZIP/XML fallback
 - TXT/Markdown/reStructuredText/AsciiDoc → reads directly as text
@@ -235,11 +241,19 @@ Why this matters: a 200-page book is ~75k tokens. Re-reading it once per chapter
 
 Read the first 8,000 characters of the extracted `full_text.txt` to identify:
 - Book **title** and **author(s)**
-- **Chapter structure** (look for "Chapter N", "PART I", numbered headings, table of contents)
+- **Chapter structure** — look for these patterns (supporting both English and Chinese/CJK):
+  - English: "Chapter N", "PART I", numbered headings, table of contents
+  - Chinese: "第N章", "第N節/节", "第N部分", "一、", "1. 標題"
 - **Core themes** and subject domain
 - Approximate number of chapters
 
 Then read the Table of Contents section if present to map all chapters.
+
+**Chinese book notes:**
+- The script detects Chinese content automatically and uses `detect_chinese_toc()` to find table of contents
+- Chapter detection uses combined English + Chinese regex patterns
+- The `has_chinese_content` field in metadata.json indicates Chinese was found
+- For Chinese chapter summarization, preserve original Chinese framework names but provide English translations in parentheses when possible
 
 **If mode is "Analyze Only":** produce the extraction report now and stop. Structure:
 ```
